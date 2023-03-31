@@ -5,13 +5,13 @@ import java.util.BitSet;
 
 public class Fiscsim {
     private int PC;
-    private int cycle;
+    private int clk;
 
     private boolean Z;
 
     private byte[] registers;
 
-    ArrayList<Integer> memory; //Instruction memory
+    private ArrayList<Integer> memory; //Instruction memory
 
     public Fiscsim(String objFileName) {
         registers = new byte[4];
@@ -26,7 +26,7 @@ public class Fiscsim {
     }
 
     private void debugState() {
-        System.err.println("[STATE]\t\tCycle: "+cycle+"\tPC: 0"+PC+"\tZ: "+Z+"\t\tR0: "+Integer.toHexString(registers[0])+"\t\tR1: "+Integer.toHexString(registers[1])+"\tR2: "+Integer.toHexString(registers[2])+"\tR3: "+Integer.toHexString(registers[3]));
+        System.err.println("[STATE]\t\t\tclk: "+clk+"\tPC: 0"+PC+"\tZ: "+Z+"\t\tR0: "+Integer.toHexString(registers[0])+"\t\tR1: "+Integer.toHexString(registers[1])+"\tR2: "+Integer.toHexString(registers[2])+"\tR3: "+Integer.toHexString(registers[3]));
     }
 
     private static String to8BitString(int n) {
@@ -44,7 +44,7 @@ public class Fiscsim {
         while (PC < memory.size()) {
             performAction(memory.get(PC));
             PC++;
-            cycle++;
+            clk++;
         }
     }
 
@@ -106,7 +106,7 @@ public class Fiscsim {
                 PC = target;
                 System.err.println("[disassembly]\tbnz target addr:\t 0x"+Integer.toHexString(target));
             } else {
-                System.err.println("[disassembly]\tno branch - zero flag set ");
+                System.err.println("[disassembly]\tbnz cannot branch - zero flag set ");
             }
             debugState();
         }
