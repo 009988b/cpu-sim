@@ -128,6 +128,7 @@ public class Fiscsim {
             reader.close();
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(-1);
         }
     }
 }
