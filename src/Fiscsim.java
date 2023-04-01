@@ -81,7 +81,7 @@ public class Fiscsim {
         setZeroFlag(Rd);
         debugState();
         String s = "[disassembly]\tand r"+Rd+" r"+Rn+" r"+Rm;
-        s += "\tnew value: "+registers[Rd];
+        s += "\tnew value: "+Integer.toHexString(registers[Rd]);
         System.out.println(s);
     }
 

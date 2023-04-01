@@ -51,6 +51,7 @@ public class Fiscas {
             String rd = "";
             String rn = "";
             String rm = "";
+            if (cmd.startsWith(";")) return -1;
             if (!cmd.contains(":")) {
                 i = c[0];
                 if (c.length > 0) {
