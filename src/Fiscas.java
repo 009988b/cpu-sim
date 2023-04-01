@@ -109,10 +109,10 @@ public class Fiscas {
                     for (int bit = 0; bit < l; bit++) {
                         result += "0";
                     }
-                    int s = instructionSet.size();
+                    int s = lines.size();
                     if (Integer.parseInt(target,2) > s) {
                         String msg = "[PARSING ERROR] Target address out";
-                        msg += "of bounds: 0b"+target;
+                        msg += "of bounds: 0b"+target+" max: "+s;
                         throw new Exception(msg);
                     }
                     result += target;
@@ -153,7 +153,8 @@ public class Fiscas {
                     labels.put(label, addr);
 
                 }
-
+                System.out.println(idx);
+                lines.add(line);
                 line = reader.readLine();
                 idx++;
             }
@@ -180,7 +181,6 @@ public class Fiscas {
                 }
                 //translate to machine code
                 instructionSet.add(parseCommand(cmd));
-                lines.add(cmd);
                 line = reader.readLine();
                 idx++;
             }

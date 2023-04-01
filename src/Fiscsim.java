@@ -57,14 +57,15 @@ public class Fiscsim {
             performAction(memory.get(PC));
             PC++;
             clk++;
-            if (clk > 1100) System.exit(0);
+            if (clk > 330) System.exit(0);
         }
     }
 
     private void add(int Rd, int Rn, int Rm) {
         //ADD: Rd <- Rn + Rm, Z <- (Rd == 0)
         registers[Rd] = (registers[Rn] + registers[Rm]);
-        if (registers[Rd] > 256) {
+        if (registers[Rd] >= 256) {
+            //Simulating unsigned behavior
             registers[Rd] -= 256;
         }
         setZeroFlag(Rd);
