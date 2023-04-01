@@ -42,7 +42,9 @@ public class Fiscas {
         try {
             cmd = cmd.trim();
             if (cmd.contains(",")) {
-                throw new Exception("[PARSING ERROR] Invalid assembler line: "+cmd+"\t - Expecting space separation");
+                String msg = "[PARSING ERROR] Invalid assembler line: "+cmd;
+                msg += "\t - Expecting space separation";
+                throw new Exception(msg);
             }
             String[] c = cmd.split(" ");
             String i = "";
@@ -99,20 +101,26 @@ public class Fiscas {
                 case "bnz":
                     result = "11";
                     if (labels.get(c[1]) == null) {
-                        throw new Exception("[PARSING ERROR] Label <"+c[1]+"> is undefined.");
+                        String msg = "[PARSING ERROR] Undefined label: "+c[1];
+                        throw new Exception(msg);
                     }
                     String target = Integer.toBinaryString(labels.get(c[1]));
                     int l = 6 - target.length();
                     for (int bit = 0; bit < l; bit++) {
                         result += "0";
                     }
-                    if (Integer.parseInt(target,2) > instructionSet.size()) {
-                        throw new Exception("[PARSING ERROR] Target address out of bounds: 0b"+target);
+                    int s = instructionSet.size();
+                    if (Integer.parseInt(target,2) > s) {
+                        String msg = "[PARSING ERROR] Target address out";
+                        msg += "of bounds: 0b"+target;
+                        throw new Exception(msg);
                     }
                     result += target;
                     break;
                 default:
-                    throw new Exception("[PARSING ERROR] Instruction <"+i+"> not recognized. Valid instructions: [add, and, not, bnz]");
+                    String msg = "[PARSING ERROR] Instruction {"+i+"} not ";
+                    msg += "recognized in set {add, and, not, bnz}";
+                    throw new Exception(msg);
             }
             return Integer.parseInt(result, 2);
         } catch (Exception e) {
@@ -138,7 +146,9 @@ public class Fiscas {
                     //System.out.println(s[1].trim());
                     int addr = idx;
                     if (labels.containsKey(label)) {
-                        throw new Exception("[ERROR] Label <"+label+"> on line <"+idx+"> is already defined");
+                        String msg = "[ERROR] Label <"+label+"> on line <";
+                        msg += idx+"> is already defined";
+                        throw new Exception(msg);
                     }
                     labels.put(label, addr);
 
@@ -190,7 +200,9 @@ public class Fiscas {
         System.err.println("*** MACHINE PROGRAM ***");
         instructionSet.forEach((i) -> {
             int idx = instructionSet.indexOf(i);
-            System.err.println("0"+idx+":"+Integer.toHexString(i)+"\t"+lines.get(idx));
+            String d = "0"+idx+":"+Integer.toHexString(i);
+            d += "\t"+lines.get(idx);
+            System.err.println(d);
         });
     }
 
@@ -198,13 +210,16 @@ public class Fiscas {
         File f = new File("test.hex");
         try {
             if (f.createNewFile()) {
-                System.out.println("[FISCAS] machine code saved to " + f.getName());
+                String s = "[FISCAS] machine code saved to "+f.getName();
+                System.out.println(s);
             }
             FileWriter w = new FileWriter("test.hex");
             w.write("v2.0 raw\n");
             for (int x : instructionSet) {
-                if (Files.size(Path.of("test.hex")) > Runtime.getRuntime().totalMemory()) {
-                    throw new Exception("[ERROR] Output file is larger than system memory");
+                long totalMem = Runtime.getRuntime().totalMemory();
+                if (Files.size(Path.of("test.hex")) > totalMem) {
+                    String s = "[ERROR] Outfile is larger than sys. memory";
+                    throw new Exception(s);
                 }
                 w.write("" + Integer.toHexString(x) + "\n");
             }
