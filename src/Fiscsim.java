@@ -108,6 +108,7 @@ public class Fiscsim {
     private void bnz(String str) {
         //BNZ: if (!Z) PC <- target
         int target = Integer.parseInt(str.substring(2),2);
+        debugState();
         if (!Z) {
             PC = target;
             String s = Integer.toHexString(target);
@@ -115,7 +116,6 @@ public class Fiscsim {
         } else {
             System.out.println("[disassembly]\tbnz cannot branch - Z is set");
         }
-        debugState();
     }
 
     private void performAction(int instruction) {
@@ -158,5 +158,16 @@ public class Fiscsim {
             e.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    public static void main(String[] args) {
+        String filename = "";
+        for (String s : args) {
+            if (s.contains(".hex")) {
+                filename = s;
+            }
+        }
+        System.out.println("[FISCSIM] Loading object file");
+        Fiscsim fs = new Fiscsim(filename);
     }
 }

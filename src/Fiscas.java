@@ -12,13 +12,17 @@ public class Fiscas {
     private ArrayList<String> lines;
     private HashMap<String, Integer> labels;
 
-    public Fiscas(String sourceFileName) {
+    private int cursorOffset = 0;
+
+    public Fiscas(String sourceFileName, boolean printTables) {
         instructionSet = new ArrayList<>();
         lines = new ArrayList<>();
         labels = new HashMap<>();
         readFile(sourceFileName);
         writeFile();
-        printTables();
+        if (printTables) {
+            printTables();
+        }
     }
 
     private String encodeRegister(String r) throws Exception {
@@ -105,7 +109,9 @@ public class Fiscas {
                         String msg = "[PARSING ERROR] Undefined label: "+c[1];
                         throw new Exception(msg);
                     }
-                    String target = Integer.toBinaryString(labels.get(c[1]));
+                    String target = Integer.toBinaryString(
+                            labels.get(c[1])
+                            -cursorOffset);
                     int l = 6 - target.length();
                     for (int bit = 0; bit < l; bit++) {
                         result += "0";
@@ -151,11 +157,13 @@ public class Fiscas {
                         msg += idx+"> is already defined";
                         throw new Exception(msg);
                     }
-                    labels.put(label, addr);
+                    labels.put(label, addr-cursorOffset);
 
                 }
-                System.out.println(idx);
-                lines.add(line);
+                if (!line.isBlank() && !line.trim().startsWith(";"))
+                    lines.add(line);
+                else
+                    cursorOffset+=1;
                 line = reader.readLine();
                 idx++;
             }
@@ -166,6 +174,8 @@ public class Fiscas {
             idx = 0b0;
             while (line != null) {
                 String cmd = "";
+                if (line.isBlank()) {line = reader.readLine();idx-=1;continue;}
+                if (line.trim().startsWith(";")) {line = reader.readLine();idx-=1;continue;}
                 if (line.contains(";")) {
                     String[] c = line.split(";");
                     if (!line.contains(":")) {
@@ -180,8 +190,8 @@ public class Fiscas {
                         cmd = line;
                     }
                 }
-                //translate to machine code
-                instructionSet.add(parseCommand(cmd));
+                //translate to machine
+                if (cmd != "") instructionSet.add(parseCommand(cmd));
                 line = reader.readLine();
                 idx++;
             }
@@ -196,7 +206,7 @@ public class Fiscas {
     private void printTables() {
         System.err.println("*** LABEL LIST ***");
         labels.forEach((k,v) -> {
-            System.err.println(k+"\t"+v);
+            System.err.println(k+"\t"+(v));
         });
         System.err.println("*** MACHINE PROGRAM ***");
         instructionSet.forEach((i) -> {
@@ -230,5 +240,20 @@ public class Fiscas {
             e.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    public static void main(String[] args) {
+        String filename = "";
+        boolean printTables = false;
+        for (String s : args) {
+            if (s.contains(".s")) {
+                filename = s;
+            }
+            if (s.contains("-l") || s == "-l") {
+                printTables = true;
+            }
+        }
+        System.out.println("[FISCAS] Assembling program");
+        Fiscas as = new Fiscas(filename, printTables);
     }
 }
