@@ -9,11 +9,16 @@ public class Fiscsim {
 
     private boolean Z;
 
-    private int[] registers;
+    private final int[] registers;
 
-    private ArrayList<Integer> memory; //Instruction memory
+    private final ArrayList<Integer> memory; // Instruction memory
 
-    public Fiscsim(String objFileName) {
+    private final boolean d;                 // Debug state
+    private final int cycles;                // Max clock cycles
+
+    public Fiscsim(String objFileName, boolean debugState, int cycles) {
+        d = debugState;
+        this.cycles = cycles;
         registers = new int[4];
         for (int i = 0; i < 4; i++)
             registers[i] = 0;
@@ -34,20 +39,14 @@ public class Fiscsim {
     }
 
     private void setZeroFlag(int Rd) {
-        if (registers[Rd] == 0) {
-            Z = true;
-        } else {
-            Z = false;
-        }
+        Z = registers[Rd] == 0;
     }
 
     private static String to8BitString(int n) {
         String bin = Integer.toBinaryString(n);
         int numZeros = 8-bin.length();
-        String zeros = "";
-        for (int z = 0; z < numZeros; z++) {
-            zeros += "0";
-        }
+        StringBuilder zeros = new StringBuilder();
+        zeros.append("0".repeat(Math.max(0, numZeros)));
         bin = zeros + bin;
         return bin;
     }
@@ -57,7 +56,7 @@ public class Fiscsim {
             performAction(memory.get(PC));
             PC++;
             clk++;
-            if (clk > 330) System.exit(0);
+            if (clk > cycles) System.exit(0);
         }
     }
 
@@ -69,20 +68,24 @@ public class Fiscsim {
             registers[Rd] -= 256;
         }
         setZeroFlag(Rd);
-        debugState();
-        String s = "[disassembly]\tadd r"+Rd+" r"+Rn+" r"+Rm;
-        s += "\tnew value: "+registers[Rd];
-        System.out.println(s);
+        if (d) {
+            debugState();
+            String s = "[disassembly]\tadd r"+Rd+" r"+Rn+" r"+Rm;
+            s += "\tnew value: "+registers[Rd];
+            System.out.println(s);
+        }
     }
 
     private void and(int Rd, int Rn, int Rm) {
         //AND: Rd <- Rn * Rm, Z <- (Rd == 0), PC <- PC+1
         registers[Rd] = (registers[Rn] & registers[Rm]);
         setZeroFlag(Rd);
-        debugState();
-        String s = "[disassembly]\tand r"+Rd+" r"+Rn+" r"+Rm;
-        s += "\tnew value: "+Integer.toHexString(registers[Rd]);
-        System.out.println(s);
+        if (d) {
+            debugState();
+            String s = "[disassembly]\tand r"+Rd+" r"+Rn+" r"+Rm;
+            s += "\tnew value: "+Integer.toHexString(registers[Rd]);
+            System.out.println(s);
+        }
     }
 
     private void not(int Rd, int Rn) {
@@ -92,29 +95,31 @@ public class Fiscsim {
         for (int bitIdx = s.length()-1; bitIdx > -1; bitIdx--) {
             bs.set(bitIdx, s.charAt(bitIdx) == '0'); //flip
         }
-        String flipped = "";
+        StringBuilder flipped = new StringBuilder();
         for (int x = 0; x < s.length(); x++) {
             boolean z = bs.get(x);
-            flipped += (z? 1 : 0);
+            flipped.append(z ? 1 : 0);
         }
-        registers[Rd] = Integer.parseInt(flipped,2);
+        registers[Rd] = Integer.parseInt(flipped.toString(),2);
         setZeroFlag(Rd);
-        debugState();
-        String d = "[disassembly]\tnot r"+Rd+" r"+Rn;
-        d += "\t\tnew value: "+Integer.parseInt(flipped,2);
-        System.out.println(d);
+        if (d) {
+            debugState();
+            String str = "[disassembly]\tnot r" + Rd + " r" + Rn;
+            str += "\t\tnew value: " + Integer.parseInt(flipped.toString(), 2);
+            System.out.println(str);
+        }
     }
 
     private void bnz(String str) {
         //BNZ: if (!Z) PC <- target
         int target = Integer.parseInt(str.substring(2),2);
-        debugState();
+        if (d) debugState();
         if (!Z) {
             PC = target;
             String s = Integer.toHexString(target);
-            System.out.println("[disassembly]\tbnz target addr:\t 0x"+s);
+            if (d) System.out.println("[disassembly]\tbnz target addr:\t 0x"+s);
         } else {
-            System.out.println("[disassembly]\tbnz cannot branch - Z is set");
+            if (d) System.out.println("[disassembly]\tbnz cannot branch - Z is set");
         }
     }
 
@@ -123,20 +128,15 @@ public class Fiscsim {
         String str = to8BitString(instruction);
         //System.out.println(bin);
         //Decode & Execute
+        int opCode = Integer.parseInt(str.substring(0,2),2);
         int Rd = Integer.parseInt(str.substring(2,4),2);
         int Rn = Integer.parseInt(str.substring(4,6),2);
         int Rm = Integer.parseInt(str.substring(6,8),2);
-        if (str.startsWith("00")) {
-            add(Rd,Rn,Rm);
-        }
-        if (str.startsWith("01")) {
-            and(Rd,Rn,Rm);
-        }
-        if (str.startsWith("10")) {
-            not(Rd,Rn);
-        }
-        if (str.startsWith("11")) {
-            bnz(str);
+        switch (opCode) {
+            case 0b00 -> add(Rd, Rn, Rm);
+            case 0b01 -> and(Rd, Rn, Rm);
+            case 0b10 -> not(Rd, Rn);
+            case 0b11 -> bnz(str);
         }
     }
 
@@ -156,18 +156,22 @@ public class Fiscsim {
             reader.close();
         } catch (Exception e) {
             e.printStackTrace();
-            System.exit(-1);
         }
     }
 
     public static void main(String[] args) {
         String filename = "";
+        boolean d = false;
+        int cycles = 20;
         for (String s : args) {
             if (s.contains(".hex")) {
                 filename = s;
             }
+            if (s.contains("-d")) {
+                d = true;
+            }
         }
-        System.out.println("[FISCSIM] Loading object file");
-        Fiscsim fs = new Fiscsim(filename);
+        System.out.println("[FISCSIM] Loading object file "+filename);
+        new Fiscsim(filename,d,cycles);
     }
 }

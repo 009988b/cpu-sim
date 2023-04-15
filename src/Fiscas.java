@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Fiscas {
-    private ArrayList<Integer> instructionSet;
-    private ArrayList<String> lines;
-    private HashMap<String, Integer> labels;
+    private final ArrayList<Integer> instructionSet;
+    private final ArrayList<String> lines;
+    private final HashMap<String, Integer> labels;
 
     private int cursorOffset = 0;
 
@@ -26,23 +26,18 @@ public class Fiscas {
     }
 
     private String encodeRegister(String r) throws Exception {
-        switch (r) {
-            case "r0":
-            case "":
-                return "00";
-            case "r1":
-                return "01";
-            case "r2":
-                return "10";
-            case "r3":
-                return "11";
-            default:
-                throw new Exception("[PARSING ERROR] Invalid register: " + r);
-        }
+        return switch (r) {
+            case "r0", "" -> "00";
+            case "r1" -> "01";
+            case "r2" -> "10";
+            case "r3" -> "11";
+            default ->
+                    throw new Exception("[PARSING ERROR] Invalid register: " + r);
+        };
     }
 
     private int parseCommand(String cmd) {
-        String result = "";
+        String result;
         try {
             cmd = cmd.trim();
             if (cmd.contains(",")) {
@@ -51,16 +46,14 @@ public class Fiscas {
                 throw new Exception(msg);
             }
             String[] c = cmd.split(" ");
-            String i = "";
+            String i;
             String rd = "";
             String rn = "";
             String rm = "";
             if (cmd.startsWith(";")) return -1;
             if (!cmd.contains(":")) {
                 i = c[0];
-                if (c.length > 0) {
-                    rd = c[1];
-                }
+                rd = c[1];
                 if (c.length > 2) {
                     rn = c[2];
                 }
@@ -81,53 +74,52 @@ public class Fiscas {
             }
 
             switch (i) {
-                case "add":
+                case "add" -> {
                     result = "00";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
                     result += encodeRegister(rm);
-                    break;
-
-                case "and":
+                }
+                case "and" -> {
                     result = "01";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
                     result += encodeRegister(rm);
-                    break;
+                }
                 //return Integer.parseInt(result,2);
 
-                case "not":
+                case "not" -> {
                     result = "10";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
                     result += encodeRegister(rm);
-                    break;
-
-                case "bnz":
+                }
+                case "bnz" -> {
                     result = "11";
                     if (labels.get(c[1]) == null) {
-                        String msg = "[PARSING ERROR] Undefined label: "+c[1];
+                        String msg = "[PARSING ERROR] Undefined label: " + c[1];
                         throw new Exception(msg);
                     }
                     String target = Integer.toBinaryString(
                             labels.get(c[1])
-                            -cursorOffset);
+                                    - cursorOffset);
                     int l = 6 - target.length();
-                    for (int bit = 0; bit < l; bit++) {
-                        result += "0";
-                    }
+                    StringBuilder rb = new StringBuilder(result);
+                    rb.append("0".repeat(Math.max(0, l)));
+                    result = rb.toString();
                     int s = lines.size();
-                    if (Integer.parseInt(target,2) > s) {
+                    if (Integer.parseInt(target, 2) > s) {
                         String msg = "[PARSING ERROR] Target address out";
-                        msg += "of bounds: 0b"+target+" max: "+s;
+                        msg += "of bounds: 0b" + target + " max: " + s;
                         throw new Exception(msg);
                     }
                     result += target;
-                    break;
-                default:
-                    String msg = "[PARSING ERROR] Instruction {"+i+"} not ";
+                }
+                default -> {
+                    String msg = "[PARSING ERROR] Instruction {" + i + "} not ";
                     msg += "recognized in set {add, and, not, bnz}";
                     throw new Exception(msg);
+                }
             }
             return Integer.parseInt(result, 2);
         } catch (Exception e) {
@@ -144,21 +136,18 @@ public class Fiscas {
             reader = new BufferedReader(new FileReader(filename));
             String line = reader.readLine();
             int idx = 0;
-            //1ST PASS
+            // 1ST PASS
             while (line != null) {
-                //gathering labels
+                // gathering labels
                 if (line.contains(":")) {
                     String[] s = line.split(":");
                     String label = s[0];
-                    //System.out.println(s[1].trim());
-                    int addr = idx;
                     if (labels.containsKey(label)) {
                         String msg = "[ERROR] Label <"+label+"> on line <";
                         msg += idx+"> is already defined";
                         throw new Exception(msg);
                     }
-                    labels.put(label, addr-cursorOffset);
-
+                    labels.put(label, idx-cursorOffset);
                 }
                 if (!line.isBlank() && !line.trim().startsWith(";"))
                     lines.add(line);
@@ -168,14 +157,18 @@ public class Fiscas {
                 idx++;
             }
             reader.close();
-            //2ND PASS
+            // 2ND PASS
             reader = new BufferedReader(new FileReader(filename));
             line = reader.readLine();
             idx = 0b0;
             while (line != null) {
-                String cmd = "";
-                if (line.isBlank()) {line = reader.readLine();idx-=1;continue;}
-                if (line.trim().startsWith(";")) {line = reader.readLine();idx-=1;continue;}
+                String cmd;
+                if (line.trim().startsWith(";") || line.isBlank()) {
+                    // Ignore comment only lines and blank lines
+                    line = reader.readLine();
+                    idx-=1;
+                    continue;
+                }
                 if (line.contains(";")) {
                     String[] c = line.split(";");
                     if (!line.contains(":")) {
@@ -190,8 +183,8 @@ public class Fiscas {
                         cmd = line;
                     }
                 }
-                //translate to machine
-                if (cmd != "") instructionSet.add(parseCommand(cmd));
+                // translate to machine code
+                if (!cmd.equals("")) instructionSet.add(parseCommand(cmd));
                 line = reader.readLine();
                 idx++;
             }
@@ -205,9 +198,7 @@ public class Fiscas {
 
     private void printTables() {
         System.err.println("*** LABEL LIST ***");
-        labels.forEach((k,v) -> {
-            System.err.println(k+"\t"+(v));
-        });
+        labels.forEach((k,v) -> System.err.println(k+"\t"+(v)));
         System.err.println("*** MACHINE PROGRAM ***");
         instructionSet.forEach((i) -> {
             int idx = instructionSet.indexOf(i);
@@ -249,11 +240,11 @@ public class Fiscas {
             if (s.contains(".s")) {
                 filename = s;
             }
-            if (s.contains("-l") || s == "-l") {
+            if (s.contains("-l")) {
                 printTables = true;
             }
         }
-        System.out.println("[FISCAS] Assembling program");
-        Fiscas as = new Fiscas(filename, printTables);
+        System.out.println("[FISCAS] Loading source file "+filename);
+        new Fiscas(filename, printTables);
     }
 }
