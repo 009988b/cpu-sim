@@ -3,7 +3,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -12,28 +12,44 @@ public class Fiscas {
     private final ArrayList<String> lines;
     private final HashMap<String, Integer> labels;
 
-    private int cursorOffset = 0;
+    private int cursorOffset = 0;           // Must count empty lines
+                                            // and comment-only lines
 
-    public Fiscas(String sourceFileName, boolean printTables) {
+    public Fiscas(String sourceFileName, String outFileName, boolean printTables) {
         instructionSet = new ArrayList<>();
         lines = new ArrayList<>();
         labels = new HashMap<>();
+        if (sourceFileName == "") {
+            System.err.println("[ERROR] No source .s file provided");
+            System.exit(-1);
+        }
         readFile(sourceFileName);
-        writeFile();
+        if (outFileName != "") writeFile(outFileName);
+        else writeFile("a.hex");
         if (printTables) {
             printTables();
         }
     }
 
     private String encodeRegister(String r) throws Exception {
-        return switch (r) {
-            case "r0", "" -> "00";
-            case "r1" -> "01";
-            case "r2" -> "10";
-            case "r3" -> "11";
-            default ->
-                    throw new Exception("[PARSING ERROR] Invalid register: " + r);
-        };
+        String x;
+        switch (r) {
+            case "r0":
+                x = "00";
+                break;
+            case "r1":
+                x = "01";
+                break;
+            case "r2":
+                x = "10";
+                break;
+            case "r3":
+                x = "11";
+                break;
+            default:
+                    throw new Exception("[ERROR] Invalid register: " + r);
+        }
+        return x;
     }
 
     private int parseCommand(String cmd) {
@@ -41,7 +57,7 @@ public class Fiscas {
         try {
             cmd = cmd.trim();
             if (cmd.contains(",")) {
-                String msg = "[PARSING ERROR] Invalid assembler line: "+cmd;
+                String msg = "[ERROR] Invalid assembler line: "+cmd;
                 msg += "\t - Expecting space separation";
                 throw new Exception(msg);
             }
@@ -52,6 +68,7 @@ public class Fiscas {
             String rm = "";
             if (cmd.startsWith(";")) return -1;
             if (!cmd.contains(":")) {
+                if (c.length < 2) return -1;
                 i = c[0];
                 rd = c[1];
                 if (c.length > 2) {
@@ -74,56 +91,53 @@ public class Fiscas {
             }
 
             switch (i) {
-                case "add" -> {
+                case "add":
                     result = "00";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
                     result += encodeRegister(rm);
-                }
-                case "and" -> {
+                    break;
+                case "and":
                     result = "01";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
                     result += encodeRegister(rm);
-                }
+                    break;
                 //return Integer.parseInt(result,2);
 
-                case "not" -> {
+                case "not":
                     result = "10";
                     result += encodeRegister(rd);
                     result += encodeRegister(rn);
-                    result += encodeRegister(rm);
-                }
-                case "bnz" -> {
+                    result += "00";
+                    break;
+                case "bnz":
                     result = "11";
                     if (labels.get(c[1]) == null) {
-                        String msg = "[PARSING ERROR] Undefined label: " + c[1];
+                        String msg = "[ERROR] Undefined label: " + c[1];
                         throw new Exception(msg);
                     }
                     String target = Integer.toBinaryString(
-                            labels.get(c[1])
-                                    - cursorOffset);
+                            labels.get(c[1]));
                     int l = 6 - target.length();
-                    StringBuilder rb = new StringBuilder(result);
-                    rb.append("0".repeat(Math.max(0, l)));
-                    result = rb.toString();
+                    for (int x = 0; x<l; x++) {
+                        result += "0";
+                    }
                     int s = lines.size();
                     if (Integer.parseInt(target, 2) > s) {
-                        String msg = "[PARSING ERROR] Target address out";
+                        String msg = "[ERROR] Target address out";
                         msg += "of bounds: 0b" + target + " max: " + s;
                         throw new Exception(msg);
                     }
                     result += target;
-                }
-                default -> {
-                    String msg = "[PARSING ERROR] Instruction {" + i + "} not ";
-                    msg += "recognized in set {add, and, not, bnz}";
+                    break;
+                default:
+                    String msg = "[ERROR] Instruction {" + i + "} not";
+                    msg += " recognized in set {add, and, not, bnz}";
                     throw new Exception(msg);
-                }
             }
             return Integer.parseInt(result, 2);
         } catch (Exception e) {
-            System.err.println(e.getMessage());
             e.printStackTrace();
             System.exit(-1);
         }
@@ -149,7 +163,7 @@ public class Fiscas {
                     }
                     labels.put(label, idx-cursorOffset);
                 }
-                if (!line.isBlank() && !line.trim().startsWith(";"))
+                if (!line.isEmpty() && !line.trim().startsWith(";"))
                     lines.add(line);
                 else
                     cursorOffset+=1;
@@ -163,7 +177,7 @@ public class Fiscas {
             idx = 0b0;
             while (line != null) {
                 String cmd;
-                if (line.trim().startsWith(";") || line.isBlank()) {
+                if (line.trim().startsWith(";") || line.isEmpty()) {
                     // Ignore comment only lines and blank lines
                     line = reader.readLine();
                     idx-=1;
@@ -190,7 +204,6 @@ public class Fiscas {
             }
             reader.close();
         } catch (Exception e) {
-            System.err.println(e.getMessage());
             e.printStackTrace();
             System.exit(-1);
         }
@@ -208,26 +221,29 @@ public class Fiscas {
         });
     }
 
-    private void writeFile() {
-        File f = new File("test.hex");
+    private void writeFile(String o) {
+        File f = new File(o);
         try {
             if (f.createNewFile()) {
-                String s = "[FISCAS] machine code saved to "+f.getName();
+                String s = "[FISCAS] Created "+f.getName();
                 System.out.println(s);
+            } else {
+                String err = "[ERROR] File "+f.getName()+" already exists!";
+                throw new Exception(err);
             }
-            FileWriter w = new FileWriter("test.hex");
+            FileWriter w = new FileWriter(o);
             w.write("v2.0 raw\n");
             for (int x : instructionSet) {
-                long totalMem = Runtime.getRuntime().totalMemory();
-                if (Files.size(Path.of("test.hex")) > totalMem) {
-                    String s = "[ERROR] Outfile is larger than sys. memory";
+                if (Files.lines(Paths.get(o)).count() > 64) {
+                    String s = "[ERROR] Outfile is larger than 64x8";
                     throw new Exception(s);
                 }
                 w.write("" + Integer.toHexString(x) + "\n");
             }
             w.close();
+            String s = "[SUCCESS] Saved to "+f.getName();
+            System.out.println(s);
         } catch (Exception e) {
-            System.err.println(e.getMessage());
             e.printStackTrace();
             System.exit(-1);
         }
@@ -235,6 +251,7 @@ public class Fiscas {
 
     public static void main(String[] args) {
         String filename = "";
+        String outputName = "a.hex"; // Default if no outfile provided
         boolean printTables = false;
         for (String s : args) {
             if (s.contains(".s")) {
@@ -243,8 +260,14 @@ public class Fiscas {
             if (s.contains("-l")) {
                 printTables = true;
             }
+            if (s.contains(".hex")) {
+                outputName = s;
+            }
         }
         System.out.println("[FISCAS] Loading source file "+filename);
-        new Fiscas(filename, printTables);
+        String msg = "[FISCAS] No output file name provided. ";
+        msg += "Defaulting to a.hex";
+        if (outputName == "a.hex") System.out.println(msg);
+        new Fiscas(filename, outputName, printTables);
     }
 }

@@ -26,8 +26,16 @@ loop:   and r2 r2 r2    ; r2 = b starts at 1
         add r2 r1 r2    ; r2 contains sum'+counter
         not r2 r2       ; if 239+counter=255, not 255 = 0
         bnz next
-halt:   not r2 r2       ; if we have zero, not it to get FF so CPU halts indefinitely
-        bnz halt
+        not r2 r2       ; if we have zero, not it to get FF so CPU halts indefinitely
+
+
+
+
+
+
+
+
+halt:   bnz halt
 next:   and r1 r1 r1
         and r2 r3 r3    ; r2 contains b=sum
         bnz loop

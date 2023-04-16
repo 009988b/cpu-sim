@@ -4,16 +4,16 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 public class Fiscsim {
-    private int PC;
-    private int clk;
+    private int PC;                          // Program Counter
+    private int clk;                         // Current cycle
 
-    private boolean Z;
+    private boolean Z;                       // Zero flag
 
-    private final int[] registers;
+    private final int[] registers;           // R0 - R3
 
-    private final ArrayList<Integer> memory; // Instruction memory
+    private final ArrayList<Integer> memory; // Instruction Memory
 
-    private final boolean d;                 // Debug state
+    private final boolean d;                 // Debug state flag
     private final int cycles;                // Max clock cycles
 
     public Fiscsim(String objFileName, boolean debugState, int cycles) {
@@ -45,10 +45,11 @@ public class Fiscsim {
     private static String to8BitString(int n) {
         String bin = Integer.toBinaryString(n);
         int numZeros = 8-bin.length();
-        StringBuilder zeros = new StringBuilder();
-        zeros.append("0".repeat(Math.max(0, numZeros)));
-        bin = zeros + bin;
-        return bin;
+        String str = "";
+        for (int x = 0; x < numZeros; x++) {
+            str += "0";
+        }
+        return str+bin;
     }
 
     private void exec() {
@@ -64,7 +65,7 @@ public class Fiscsim {
         //ADD: Rd <- Rn + Rm, Z <- (Rd == 0)
         registers[Rd] = (registers[Rn] + registers[Rm]);
         if (registers[Rd] >= 256) {
-            //Simulating unsigned behavior
+            // 'Overflow'
             registers[Rd] -= 256;
         }
         setZeroFlag(Rd);
@@ -115,7 +116,7 @@ public class Fiscsim {
         int target = Integer.parseInt(str.substring(2),2);
         if (d) debugState();
         if (!Z) {
-            PC = target;
+            PC = target-1;
             String s = Integer.toHexString(target);
             if (d) System.out.println("[disassembly]\tbnz target addr:\t 0x"+s);
         } else {
@@ -126,17 +127,24 @@ public class Fiscsim {
     private void performAction(int instruction) {
         //Fetch
         String str = to8BitString(instruction);
-        //System.out.println(bin);
         //Decode & Execute
         int opCode = Integer.parseInt(str.substring(0,2),2);
         int Rd = Integer.parseInt(str.substring(2,4),2);
         int Rn = Integer.parseInt(str.substring(4,6),2);
         int Rm = Integer.parseInt(str.substring(6,8),2);
         switch (opCode) {
-            case 0b00 -> add(Rd, Rn, Rm);
-            case 0b01 -> and(Rd, Rn, Rm);
-            case 0b10 -> not(Rd, Rn);
-            case 0b11 -> bnz(str);
+            case 0b00:
+                add(Rd, Rn, Rm);
+                break;
+            case 0b01:
+                and(Rd, Rn, Rm);
+                break;
+            case 0b10:
+                not(Rd, Rn);
+                break;
+            case 0b11:
+                bnz(str);
+                break;
         }
     }
 
@@ -169,6 +177,13 @@ public class Fiscsim {
             }
             if (s.contains("-d")) {
                 d = true;
+            }
+            try {
+                if (Integer.parseInt(s) > 0) {
+                    cycles = Integer.parseInt(s);
+                }
+            } catch (Exception e) {
+                // Not all arguments should be numbers
             }
         }
         System.out.println("[FISCSIM] Loading object file "+filename);
