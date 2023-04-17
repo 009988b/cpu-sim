@@ -186,6 +186,15 @@ public class Fiscsim {
                 // Not all arguments should be numbers
             }
         }
+        if (filename == "") {
+            System.err.println("[ERROR] No .hex object file provided, exiting");
+            System.out.println("java Fiscsim.java  \n" +
+            "\n" +
+            "USAGE:  java Fiscsim.java  [objfile] [cycles] [-d]\n" +
+            "        -d : print disassembly listing with each cycle\n" +
+            "        if cycles are unspecified the CPU will run for 20 cycles");
+            System.exit(0);
+        }
         System.out.println("[FISCSIM] Loading object file "+filename);
         new Fiscsim(filename,d,cycles);
     }

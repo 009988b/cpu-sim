@@ -15,7 +15,7 @@ public class Fiscas {
     private int cursorOffset = 0;           // Must count empty lines
                                             // and comment-only lines
 
-    public Fiscas(String sourceFileName, String outFileName, boolean printTables) {
+    public Fiscas(String sourceFileName, String out, boolean printTables) {
         instructionSet = new ArrayList<>();
         lines = new ArrayList<>();
         labels = new HashMap<>();
@@ -24,7 +24,7 @@ public class Fiscas {
             System.exit(-1);
         }
         readFile(sourceFileName);
-        if (outFileName != "") writeFile(outFileName);
+        if (out != "") writeFile(out);
         else writeFile("a.hex");
         if (printTables) {
             printTables();
@@ -47,7 +47,7 @@ public class Fiscas {
                 x = "11";
                 break;
             default:
-                    throw new Exception("[ERROR] Invalid register: " + r);
+                throw new Exception("[ERROR] Invalid register: " + r);
         }
         return x;
     }
@@ -263,6 +263,14 @@ public class Fiscas {
             if (s.contains(".hex")) {
                 outputName = s;
             }
+        }
+        if (filename == "") {
+            System.err.println("[ERROR] No .s source file provided, exiting");
+            System.out.println("java Fiscas.java\n" +
+                "\n" +
+                "USAGE:  java Fiscas.javaq <source file> <object file> [-l]\n" +
+                "\t\t-l : print listing to standard error");
+            System.exit(0);
         }
         System.out.println("[FISCAS] Loading source file "+filename);
         String msg = "[FISCAS] No output file name provided. ";

@@ -27,14 +27,6 @@ loop:   and r2 r2 r2    ; r2 = b starts at 1
         not r2 r2       ; if 239+counter=255, not 255 = 0
         bnz next
         not r2 r2       ; if we have zero, not it to get FF so CPU halts indefinitely
-
-
-
-
-
-
-
-
 halt:   bnz halt
 next:   and r1 r1 r1
         and r2 r3 r3    ; r2 contains b=sum
